@@ -17,6 +17,10 @@ if !exists('http_client_result_vsplit')
   let g:http_client_result_vsplit = 1
 endif
 
+if !exists('http_client_focus_output_window')
+  let g:http_client_focus_output_window = 1
+endif
+
 function! s:DoHTTPRequest()
   if !has('python')
     echo 'Error: this plugin requires vim compiled with python support.'
