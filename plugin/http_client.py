@@ -73,7 +73,7 @@ def do_request(block, buf):
       data = dict(filter(lambda (k,v): not FILE_REGEX.match(v), key_value_pairs.items()))
     else:
       # Straight data: just send it off as a string.
-      data = '\n'.join(block)
+      data = '\n'.join(data)
 
     response = requests.request(method, url, headers=headers, data=data, files=files)
     content_type = response.headers.get('Content-Type', '').split(';')[0]
