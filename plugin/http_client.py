@@ -18,6 +18,7 @@ HEADER_REGEX = re.compile('^([^()<>@,;:\<>/\[\]?={}]+):\\s*(.*)$')
 VAR_REGEX = re.compile('^# ?(:[^: ]+)\\s*=\\s*(.+)$')
 GLOBAL_VAR_REGEX = re.compile('^# ?(\$[^$ ]+)\\s*=\\s*(.+)$')
 FILE_REGEX = re.compile("!((?:file)|(?:(?:content)))\((.+)\)")
+JSON_REGEX = re.compile("(javascript|json)$", re.IGNORECASE)
 
 
 def replace_vars(string, variables):
@@ -79,7 +80,8 @@ def do_request(block, buf):
     content_type = response.headers.get('Content-Type', '').split(';')[0]
 
     response_body = response.text
-    if content_type == 'application/json':
+    if JSON_REGEX.search(content_type):
+        content_type = 'application/json'
         try:
             response_body = json.dumps(
                 json.loads(response.text), sort_keys=True, indent=2,
