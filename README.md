@@ -113,6 +113,9 @@ By default the request result appears in a vertical split. Setting this option t
 
 By default the focus will go to the output window. If set to 0 the focus will return to the window with request definitions.
 
+#### g:http_client_verify_ssl (default 1)
+
+By default requests will verify SSL certificates for HTTPS endpoints. Setting this option to 0 disables SSL verification which allows requests to sites using self-signed certificates, for example.
 
 ## Contributing
 

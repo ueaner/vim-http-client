@@ -12,13 +12,14 @@ except NameError:
 if not from_cmdline:
     import vim
 
-
 METHOD_REGEX = re.compile('^(GET|POST|DELETE|PUT|HEAD|OPTIONS|PATCH) (.*)$')
 HEADER_REGEX = re.compile('^([^()<>@,;:\<>/\[\]?={}]+):\\s*(.*)$')
 VAR_REGEX = re.compile('^# ?(:[^: ]+)\\s*=\\s*(.+)$')
 GLOBAL_VAR_REGEX = re.compile('^# ?(\$[^$ ]+)\\s*=\\s*(.+)$')
 FILE_REGEX = re.compile("!((?:file)|(?:(?:content)))\((.+)\)")
 JSON_REGEX = re.compile("(javascript|json)$", re.IGNORECASE)
+
+verify_ssl = vim.eval('g:http_client_verify_ssl') == '1'
 
 
 def replace_vars(string, variables):
@@ -76,7 +77,11 @@ def do_request(block, buf):
       # Straight data: just send it off as a string.
       data = '\n'.join(data)
 
-    response = requests.request(method, url, headers=headers, data=data, files=files)
+    if not verify_ssl:
+        from requests.packages.urllib3.exceptions import InsecureRequestWarning
+        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+    response = requests.request(method, url, verify=verify_ssl, headers=headers, data=data, files=files)
     content_type = response.headers.get('Content-Type', '').split(';')[0]
 
     response_body = response.text

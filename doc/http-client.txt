@@ -93,6 +93,7 @@ Configuration                                        *http-client-configuration*
                                                          *g:http_client_json_ft*
                                                  *g:http_client_json_escape_utf*
                                                    *g:http_client_result_vsplit*
+                                                   *g:http_client_verify_ssl*
 
 g:http_client_bind_hotkey (default 1)
 
@@ -121,6 +122,12 @@ g:http_client_focus_output_window (default 1)
 
 By default the focus will go to the output window. If set to 0 the focus will
 return to the window with request definitions.
+
+g:http_client_verify_ssl (default 1)
+
+By default requests will verify SSL certificates for HTTPS endpoints. Setting
+this option to 0 disables SSL verification which allows requests to sites
+using self-signed certificates, for example.
 
 ==============================================================================
 Installation                                          *http-client-installation*
