@@ -117,6 +117,10 @@ By default the focus will go to the output window. If set to 0 the focus will re
 
 By default requests will verify SSL certificates for HTTPS endpoints. Setting this option to 0 disables SSL verification which allows requests to sites using self-signed certificates, for example.
 
+#### g:http_client_preserve_responses (default 0)
+
+By default responses will be written to the output buffer replacing any previous response. Setting this option to 1 will preserve previous responses, adding the latest response to the top of the buffer.  
+
 ## Contributing
 
 This plugin is currently quite simple. Contributions, suggestions, and feedback are all welcomed!

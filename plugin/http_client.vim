@@ -25,6 +25,10 @@ if !exists('http_client_verify_ssl')
   let g:http_client_verify_ssl = 1
 endif
 
+if !exists('http_client_preserve_responses')
+  let g:http_client_preserve_responses = 0
+endif
+
 function! s:DoHTTPRequest()
   if !has('python')
     echo 'Error: this plugin requires vim compiled with python support.'

@@ -145,7 +145,7 @@ def open_scratch_buffer(contents, filetype):
         vim.command('%swincmd w' % existing_buffer_window_id)
 
     vim.command('set filetype=%s' % filetype)
-    vim.current.buffer[:] = contents
+    write_buffer(contents, vim.current.buffer)
 
     if vim.eval('g:http_client_focus_output_window') != '1':
         vim.current.window = previous_window
@@ -161,6 +161,15 @@ def do_request_from_buffer():
         vim_ft = vim_filetypes_by_content_type().get(content_type, 'text')
         open_scratch_buffer(response, vim_ft)
 
+
+def write_buffer(contents, buffer):
+    if vim.eval('g:http_client_preserve_responses') == '1':
+        if len(buffer):
+            buffer[0:0] = [""]
+        buffer[0:0] = contents
+        vim.command('0')
+    else:
+        buffer[:] = contents
 
 # Tests.
 
