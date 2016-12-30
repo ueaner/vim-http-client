@@ -39,13 +39,13 @@ def do_request(block, buf):
     block = [line for line in block if not is_comment(line) and line.strip() != '']
 
     if len(block) == 0:
-        print 'Request was empty.'
+        print('Request was empty.')
         return
 
     method_url = block.pop(0)
     method_url_match = METHOD_REGEX.match(method_url)
     if not method_url_match:
-        print 'Could not find method or URL!'
+        print('Could not find method or URL!')
         return
 
     method, url = method_url_match.groups()
@@ -71,8 +71,8 @@ def do_request(block, buf):
         arg = arg.replace('\\(', '(').replace('\\)', ')')
         return open(arg, 'rb') if type == 'file' else (arg)
 
-      files = dict(map(lambda (k,v): (k, to_file(v)), filter(lambda (k,v): FILE_REGEX.match(v), key_value_pairs.items())))
-      data = dict(filter(lambda (k,v): not FILE_REGEX.match(v), key_value_pairs.items()))
+      files = dict([(k, to_file(v)) for (k, v) in key_value_pairs.items() if FILE_REGEX.match(v)])
+      data = dict([(k, v) for (k, v) in key_value_pairs.items() if not FILE_REGEX.match(v)])
     else:
       # Straight data: just send it off as a string.
       data = '\n'.join(data)
@@ -180,7 +180,7 @@ def run_tests():
         return json.loads(''.join([ l for l in resp[0] if not l.startswith('//') ]))
 
     def test(assertion, test):
-        print 'Test %s: %s' % ('passed' if assertion else 'failed', test)
+        print('Test %s: %s' % ('passed' if assertion else 'failed', test))
         if not assertion:
             raise AssertionError
 

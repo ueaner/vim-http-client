@@ -30,17 +30,23 @@ if !exists('http_client_preserve_responses')
 endif
 
 function! s:DoHTTPRequest()
-  if !has('python')
+  if has('python')
+    command! -nargs=1 Python python <args>
+    command! -nargs=1 Pyfile pyfile <args>
+  elseif has('python3')
+    command! -nargs=1 Python python3 <args>
+    command! -nargs=1 Pyfile py3file <args>
+  else
     echo 'Error: this plugin requires vim compiled with python support.'
     finish
   endif
 
   if !s:initialized_client
     let s:initialized_client = 1
-    execute 'pyfile ' . s:script_path . '/http_client.py'
+    execute 'Pyfile ' . s:script_path . '/http_client.py'
   endif
 
-  python do_request_from_buffer()
+  Python do_request_from_buffer()
 endfunction
 
 command! -nargs=0 HTTPClientDoRequest call <SID>DoHTTPRequest()
