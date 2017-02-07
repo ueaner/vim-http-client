@@ -18,7 +18,7 @@ Once you have these, use your favorite Vim plugin manager to install `aquach/vim
 
 ## Usage
 
-Put your cursor anywhere in a newline-delimited block of text and hit `<Leader>tt`. `vim-http-client` will parse the text into a HTTP request, execute it, and display its results will appear in a split. You can also directly invoke the HTTP client with `:call HTTPClientDoRequest()<cr>`. The format mirrors HTTP's format:
+Put your cursor anywhere in a newline-delimited block of text and hit `<Leader>tt`. `vim-http-client` will parse the text into a HTTP request, execute it, and display its results will appear in a split. You can also directly invoke the HTTP client with `:HTTPClientDoRequest<cr>`. The format mirrors HTTP's format:
 
 ```
 # Comments start with #.
