@@ -81,7 +81,12 @@ def do_request(block, buf):
         from requests.packages.urllib3.exceptions import InsecureRequestWarning
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-    response = requests.request(method, url, verify=verify_ssl, headers=headers, data=data, files=files)
+    json_data = None
+    if headers.get('Content-Type') == 'application/json':
+        json_data = json.loads(data)
+        data = None
+
+    response = requests.request(method, url, verify=verify_ssl, headers=headers, data=data, files=files, json=json_data)
     content_type = response.headers.get('Content-Type', '').split(';')[0]
 
     response_body = response.text
