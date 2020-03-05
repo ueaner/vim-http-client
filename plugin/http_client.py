@@ -50,6 +50,7 @@ def do_request(block, buf):
 
     method, url = method_url_match.groups()
     url = replace_vars(url, variables)
+    url = url.strip()
 
     headers = {}
     while len(block) > 0:
