@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import json
 import re
 import requests
@@ -19,7 +20,11 @@ GLOBAL_VAR_REGEX = re.compile('^# ?(\$[^$ ]+)\\s*=\\s*(.+)$')
 FILE_REGEX = re.compile("!((?:file)|(?:(?:content)))\((.+)\)")
 JSON_REGEX = re.compile("(javascript|json)$", re.IGNORECASE)
 
-verify_ssl = vim.eval('g:http_client_verify_ssl') == '1'
+verify_ssl = False
+json_escape_utf = False
+if not from_cmdline:
+    verify_ssl = vim.eval('g:http_client_verify_ssl') == '1'
+    json_escape_utf = vim.eval('g:http_client_json_escape_utf') == '1'
 
 
 def replace_vars(string, variables):
@@ -32,9 +37,37 @@ def is_comment(s):
     return s.startswith('#')
 
 
+def is_json(s):
+    if s is None:
+        return False
+
+    try:
+        json.loads(s)
+    except ValueError:
+        return False
+    return True
+
+
+def to_curl(req):
+    command = "curl -X {method} -H {headers} -d '{data}' '{uri}'"
+    method = req.method
+    uri = req.url
+    data = req.body
+    headers = ['"{0}: {1}"'.format(k, v) for k, v in req.headers.items()]
+    headers = " -H ".join(headers)
+
+    if is_json(data):
+        json_data = json.loads(data)
+        curl = command.format(method=method, headers=headers, data=json_data, uri=uri)
+    else:
+        curl = command.format(method=method, headers=headers, data=data, uri=uri)
+
+    return curl
+
+
 def do_request(block, buf):
-    variables = dict((m.groups() for m in (GLOBAL_VAR_REGEX.match(l) for l in buf) if m))
-    variables.update(dict((m.groups() for m in (VAR_REGEX.match(l) for l in block) if m)))
+    variables = dict((m.groups() for m in (GLOBAL_VAR_REGEX.match(v) for v in buf) if m))
+    variables.update(dict((m.groups() for m in (VAR_REGEX.match(v) for v in block) if m)))
 
     block = [line for line in block if not is_comment(line) and line.strip() != '']
 
@@ -62,21 +95,22 @@ def do_request(block, buf):
         else:
             break
 
-    data = [ replace_vars(l, variables) for l in block ]
+    data = [replace_vars(v, variables) for v in block]
     files = None
-    if all([ '=' in l for l in data ]):
-      # Form data: separate entries into data dict, and files dict
-      key_value_pairs = dict([ l.split('=', 1) for l in data ])
-      def to_file(expr):
-        type, arg = FILE_REGEX.match(expr).groups()
-        arg = arg.replace('\\(', '(').replace('\\)', ')')
-        return open(arg, 'rb') if type == 'file' else (arg)
+    if all(['=' in v for v in data]):
+        # Form data: separate entries into data dict, and files dict
+        key_value_pairs = dict([v.split('=', 1) for v in data])
 
-      files = dict([(k, to_file(v)) for (k, v) in key_value_pairs.items() if FILE_REGEX.match(v)])
-      data = dict([(k, v) for (k, v) in key_value_pairs.items() if not FILE_REGEX.match(v)])
+        def to_file(expr):
+            type, arg = FILE_REGEX.match(expr).groups()
+            arg = arg.replace('\\(', '(').replace('\\)', ')')
+            return open(arg, 'rb') if type == 'file' else (arg)
+
+        files = dict([(k, to_file(v)) for (k, v) in key_value_pairs.items() if FILE_REGEX.match(v)])
+        data = dict([(k, v) for (k, v) in key_value_pairs.items() if not FILE_REGEX.match(v)])
     else:
-      # Straight data: just send it off as a string.
-      data = '\n'.join(data)
+        # Straight data: just send it off as a string.
+        data = '\n'.join(data)
 
     if not verify_ssl:
         from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -87,24 +121,28 @@ def do_request(block, buf):
         json_data = json.loads(data)
         data = None
 
-    response = requests.request(method, url, verify=verify_ssl, headers=headers, data=data, files=files, json=json_data)
+    response = requests.request(method, url, verify=verify_ssl, headers=headers, data=data, files=files, json=json_data,
+                                timeout=5)
     content_type = response.headers.get('Content-Type', '').split(';')[0]
 
     response_body = response.text
-    if JSON_REGEX.search(content_type):
+    if JSON_REGEX.search(content_type) or is_json(response_body):
         content_type = 'application/json'
         try:
             response_body = json.dumps(
                 json.loads(response.text), sort_keys=True, indent=2,
                 separators=(',', ': '),
-                ensure_ascii=vim.eval('g:http_client_json_escape_utf')=='1')
+                ensure_ascii=json_escape_utf)
         except ValueError:
             pass
+
+    curl = to_curl(response.request)
 
     display = (
         response_body.split('\n') +
         ['', '// status code: %s' % response.status_code] +
-        ['// %s: %s' % (k, v) for k, v in response.headers.items()]
+        ['// %s: %s' % (k, v) for k, v in response.headers.items()] +
+        ['// %s' % curl]
     )
 
     return display, content_type
@@ -119,12 +157,17 @@ def vim_filetypes_by_content_type():
         'text/html': 'html'
     }
 
+
 BUFFER_NAME = '__HTTP_Client_Response__'
+
+
+def is_buffer_terminator(s):
+    return s.strip() == ''
 
 
 def find_block(buf, line_num):
     length = len(buf)
-    is_buffer_terminator = lambda s: s.strip() == ''
+    # is_buffer_terminator = lambda s: s.strip() == ''
 
     block_start = line_num
     while block_start > 0 and not is_buffer_terminator(buf[block_start]):
@@ -177,13 +220,14 @@ def write_buffer(contents, buffer):
     else:
         buffer[:] = contents
 
+
 # Tests.
 
 def run_tests():
     import json
 
     def extract_json(resp):
-        return json.loads(''.join([ l for l in resp[0] if not l.startswith('//') ]))
+        return json.loads(''.join([v for v in resp[0] if not v.startswith('//')]))
 
     def test(assertion, test):
         print('Test %s: %s' % ('passed' if assertion else 'failed', test))
@@ -222,7 +266,7 @@ def run_tests():
         'POST http://$global/post',
         'forma=a',
         'formb=b',
-    ], [ '# $global = httpbin.org']))
+    ], ['# $global = httpbin.org']))
     test(resp['form']['forma'] == 'a', 'Global variables are substituted.')
 
     import os
@@ -230,8 +274,8 @@ def run_tests():
 
     SAMPLE_FILE_CONTENT = 'sample file content'
 
-    temp_file = NamedTemporaryFile(delete = False)
-    temp_file.write(SAMPLE_FILE_CONTENT)
+    temp_file = NamedTemporaryFile(delete=False)
+    temp_file.write(str.encode(SAMPLE_FILE_CONTENT))
     temp_file.close()
     resp = extract_json(do_request([
         'POST http://httpbin.org/post',
@@ -240,7 +284,7 @@ def run_tests():
         "formc=!file(%s)" % temp_file.name,
     ], []))
     test(resp['files']['formc'] == SAMPLE_FILE_CONTENT, 'Files given as path are sent properly.')
-    test(not 'formc' in resp['form'], 'File not included in form data.')
+    test('formc' not in resp['form'], 'File not included in form data.')
     os.unlink(temp_file.name)
 
     resp = extract_json(do_request([
